@@ -26,13 +26,16 @@
             &larr; Voltar para a Lista
         </a>
 
-        <!-- **ALTERAÇÃO**: O layout agora é uma grelha que se adapta a ecrãs maiores e à orientação horizontal. -->
         <div id="details-content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div id="anime-banner-container" class="lg:col-span-1">
                 <!-- O banner do anime será inserido aqui -->
             </div>
-            <div id="anime-versions-container" class="lg:col-span-2">
+            <!-- **ALTERAÇÃO**: Container agora inclui espaço para a sinopse -->
+            <div id="anime-info-container" class="lg:col-span-2 space-y-6">
+                <!-- A sinopse será inserida aqui -->
+                <div id="anime-synopsis-container"></div>
                 <!-- A lista de downloads será inserida aqui -->
+                <div id="anime-versions-container"></div>
             </div>
         </div>
     </div>
@@ -40,6 +43,7 @@
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             const bannerContainer = document.getElementById('anime-banner-container');
+            const synopsisContainer = document.getElementById('anime-synopsis-container');
             const versionsContainer = document.getElementById('anime-versions-container');
             
             const detailsDataJSON = localStorage.getItem('animeDetails');
@@ -54,10 +58,18 @@
             // Adiciona o banner e o título
             const bannerHtml = `
                 <img src="${detailsData.imageUrl}" alt="${detailsData.title}" class="w-full max-w-sm mx-auto lg:max-w-full rounded-lg shadow-lg aspect-[2/3] object-cover">
-                <!-- **ALTERAÇÃO**: Tamanho de fonte responsivo para o título -->
                 <h1 class="text-2xl sm:text-3xl font-bold text-white mt-4 text-center lg:text-left">${detailsData.title}</h1>
             `;
             bannerContainer.innerHTML = bannerHtml;
+
+            // **NOVO: Adiciona a sinopse**
+            const synopsisHtml = `
+                <div>
+                    <h2 class="text-2xl font-semibold text-gray-300 mb-2">Sinopse</h2>
+                    <p class="text-gray-400 leading-relaxed">${detailsData.synopsis.replace(/\n/g, '<br>')}</p>
+                </div>
+            `;
+            synopsisContainer.innerHTML = synopsisHtml;
 
             // Cria a lista de versões para download
             let versionsHtml = '<h2 class="text-2xl font-semibold text-gray-300 mb-4">Versões Disponíveis</h2>';
@@ -67,6 +79,8 @@
                 versionsHtml += `
                     <a href="${version.torrentLink}" class="download-link bg-gray-800 p-4 rounded-lg flex items-center justify-between transition-colors duration-200">
                         <span class="text-gray-300 flex-1 pr-4 text-sm sm:text-base">${version.rawTitle}</span>
+                        <!-- **NOVO: Exibe o tamanho do ficheiro** -->
+                        <span class="text-sm text-gray-400 font-mono mr-4 flex-shrink-0">${version.fileSize}</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>

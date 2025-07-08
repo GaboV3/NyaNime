@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Animes</title>
-    <!-- Tailwind CSS para um design moderno e responsivo -->
+    <title>NyaNime - Catálogo de Animes</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fontes do Google para uma melhor tipografia -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
         .anime-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
@@ -25,20 +25,20 @@
 <body class="bg-gray-900 text-gray-100">
 
     <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-8">
-            <!-- **ALTERAÇÃO**: Tamanhos de fonte ajustados para melhor legibilidade em ecrãs pequenos -->
-            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">Últimos lançamentos</h1>
+        <header class="text-center mb-4">
+            <h1 id="main-header" class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">Últimos Lançamentos (Erai-raws)</h1>
         </header>
 
-        <div class="mb-8 max-w-lg mx-auto">
-            <input type="text" id="search-bar" placeholder="Pesquisar animes nesta página..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+            <form id="search-form" class="w-full max-w-lg">
+                <input type="text" id="search-bar" name="search-query" placeholder="Pesquisar em todo o Nyaa.si..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+            </form>
+            <button id="toggle-mode-btn" class="w-full sm:w-auto flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Mudar para PT-BR</button>
         </div>
 
         <div id="message-container" class="text-center my-4"></div>
-        <!-- **ALTERAÇÃO**: A grelha agora é mais adaptável, começando com 2 colunas em telemóveis e aumentando progressivamente. -->
         <div id="results" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-            <!-- Os cartões de anime serão inseridos aqui -->
-        </div>
+            </div>
         
         <div id="pagination-container" class="flex justify-center items-center space-x-2 sm:space-x-4 mt-8"></div>
     </div>
@@ -47,9 +47,25 @@
         const resultsContainer = document.getElementById('results');
         const messageContainer = document.getElementById('message-container');
         const paginationContainer = document.getElementById('pagination-container');
+        const searchForm = document.getElementById('search-form');
         const searchBar = document.getElementById('search-bar');
+        const toggleModeBtn = document.getElementById('toggle-mode-btn');
+        const mainHeader = document.getElementById('main-header');
+
         const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
-        const API_REQUEST_DELAY = 1000;
+        const BATCH_SIZE = 5;
+        const BATCH_DELAY = 500;
+        
+        const appState = {
+            mode: 'erai-raws', 
+            query: '',
+            page: 1,
+            sources: {
+                'erai-raws': 'https://nyaa.si/user/Erai-raws',
+                'pt-br': 'https://nyaa.si/?f=0&c=1_0&q=PT-BR',
+                'search': 'https://nyaa.si/?f=0&c=1_0&q='
+            }
+        };
 
         function showMessage(text, type = 'info') {
             const colors = { info: 'text-blue-400', error: 'text-red-400', success: 'text-green-400' };
@@ -73,22 +89,21 @@
 
         async function searchAnime(title) {
             if (!title) return null;
-            const apiUrl = `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`;
+            const apiUrl = `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(title)}&page[limit]=1`;
             try {
                 const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error(`Erro na API Jikan: ${response.status} - ${response.statusText}`);
+                if (!response.ok) throw new Error(`Erro na API Kitsu: ${response.status}`);
                 const data = await response.json();
                 return data.data && data.data.length > 0 ? data.data[0] : null;
             } catch (error) {
-                console.error(`Falha ao buscar '${title}' na Jikan:`, error.message);
+                console.error(`Falha ao buscar '${title}' na Kitsu:`, error);
                 return null;
             }
         }
 
-        function createAnimeCard({ cleanedTitle, apiData }) {
+        function createAnimeCardPlaceholder({ cleanedTitle }) {
             const card = document.createElement('a');
-            card.href = './detalhes.html'; 
-            card.title = `Ver detalhes de "${cleanedTitle}"`;
+            card.href = '#'; 
             card.className = 'anime-card bg-gray-800 rounded-lg overflow-hidden shadow-lg flex flex-col cursor-pointer';
             card.setAttribute('data-title', cleanedTitle.toLowerCase());
             
@@ -97,66 +112,97 @@
             titleElement.textContent = cleanedTitle;
 
             const imageContainer = document.createElement('div');
-            imageContainer.className = 'aspect-[2/3] w-full bg-gray-700';
-
-            const imageUrl = apiData?.images?.jpg?.large_image_url;
-            if (imageUrl) {
-                imageContainer.innerHTML = `<img src="${imageUrl}" alt="${apiData.title}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src=this.src;">`;
-            } else {
-                imageContainer.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center p-2 text-center">
-                        <p class="text-xs text-gray-400">Banner não encontrado</p>
-                    </div>`;
-            }
+            imageContainer.className = 'image-placeholder aspect-[2/3] w-full bg-gray-700 animate-pulse';
             
             card.appendChild(titleElement);
             card.appendChild(imageContainer);
             
             return card;
         }
+
+        function updateAnimeCard(card, { apiData, versions }) {
+            const imageContainer = card.querySelector('.image-placeholder');
+            const cleanedTitle = card.getAttribute('data-title');
+            card.href = './detalhes.html';
+            card.title = `Ver detalhes de "${cleanedTitle}"`;
+            card.addEventListener('click', (e) => {
+                e.preventDefault(); 
+                const detailsData = {
+                    title: cleanedTitle,
+                    imageUrl: apiData?.attributes?.posterImage?.large || '',
+                    synopsis: apiData?.attributes?.synopsis || 'Sinopse não disponível.',
+                    versions: versions
+                };
+                localStorage.setItem('animeDetails', JSON.stringify(detailsData));
+                window.location.href = './detalhes.html';
+            });
+            if (!imageContainer) return; 
+            imageContainer.classList.remove('animate-pulse');
+            const imageUrl = apiData?.attributes?.posterImage?.large;
+            if (imageUrl) {
+                imageContainer.innerHTML = `<img src="${imageUrl}" alt="${cleanedTitle}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src=this.src;">`;
+            } else {
+                imageContainer.innerHTML = `<div class="w-full h-full flex items-center justify-center p-2 text-center"><p class="text-xs text-gray-400">Banner não encontrado</p></div>`;
+            }
+        }
         
         const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-        function renderPagination(currentPage, hasNextPage) {
+        function renderPagination() {
             paginationContainer.innerHTML = ''; 
-
             const prevButton = document.createElement('button');
             prevButton.textContent = 'Anterior';
             prevButton.className = 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
-            if (currentPage <= 1) {
-                prevButton.disabled = true;
-            }
-            prevButton.addEventListener('click', () => main(currentPage - 1));
+            if (appState.page <= 1) prevButton.disabled = true;
+            prevButton.addEventListener('click', () => { appState.page--; main(); });
 
             const pageDisplay = document.createElement('span');
-            pageDisplay.textContent = `Página ${currentPage}`;
+            pageDisplay.textContent = `Página ${appState.page}`;
             pageDisplay.className = 'text-lg font-semibold text-white';
 
             const nextButton = document.createElement('button');
             nextButton.textContent = 'Próxima';
-            nextButton.className = 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
-            if (!hasNextPage) {
-                nextButton.disabled = true;
-            }
-            nextButton.addEventListener('click', () => main(currentPage + 1));
+            nextButton.className = 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors';
+            nextButton.addEventListener('click', () => { appState.page++; main(); });
 
             paginationContainer.appendChild(prevButton);
             paginationContainer.appendChild(pageDisplay);
             paginationContainer.appendChild(nextButton);
         }
+        
+        function updateUI() {
+            if (appState.mode === 'erai-raws') {
+                mainHeader.textContent = 'Últimos Lançamentos (Erai-raws)';
+                toggleModeBtn.textContent = 'Mudar para PT-BR';
+            } else if (appState.mode === 'pt-br') {
+                mainHeader.textContent = 'Últimos Lançamentos (PT-BR)';
+                toggleModeBtn.textContent = 'Mudar para Erai-raws';
+            } else if (appState.mode === 'search') {
+                mainHeader.textContent = `Resultados da Pesquisa: "${appState.query}"`;
+            }
+        }
 
-        async function main(page = 1) {
+        async function main() {
             const titleSelector = 'a[href*="/view/"]:not(.comments)';
             const magnetSelector = 'a[href^="magnet:?"]';
             const animeVersions = new Map();
 
             resultsContainer.innerHTML = '';
             paginationContainer.innerHTML = '';
-            searchBar.value = ''; 
-            showMessage(`A carregar página ${page}...`, 'info');
+            
+            let targetUrl;
+            if (appState.mode === 'search') {
+                targetUrl = `${appState.sources.search}${encodeURIComponent(appState.query)}&p=${appState.page}`;
+                showMessage(`A pesquisar por "${appState.query}" na página ${appState.page}...`, 'info');
+            } else {
+                const baseUrl = appState.sources[appState.mode];
+                // **CORREÇÃO**: Verifica se o URL já tem parâmetros de consulta
+                const pageConnector = baseUrl.includes('?') ? '&' : '?';
+                targetUrl = `${baseUrl}${pageConnector}p=${appState.page}`;
+                showMessage(`A carregar página ${appState.page}...`, 'info');
+            }
 
             try {
-                const targetUrl = `https://nyaa.si/user/Erai-raws?p=${page}`;
                 const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
                 const response = await fetch(proxiedUrl);
                 if (!response.ok) throw new Error(`Não foi possível aceder ao URL através do proxy. Status: ${response.status}.`);
@@ -168,14 +214,13 @@
                 const doc = parser.parseFromString(htmlText, 'text/html');
                 const magnetLinks = doc.querySelectorAll(magnetSelector);
 
+                renderPagination();
                 if (magnetLinks.length === 0) {
-                    showMessage(`Nenhum item encontrado na página ${page}. Pode ser a última página.`, 'error');
-                    renderPagination(page, false); 
+                    showMessage(`Nenhum item encontrado.`, 'error');
                     return;
                 }
-                renderPagination(page, true);
-
-                showMessage(`Encontrados ${magnetLinks.length} itens. A agrupar e buscar informações...`, 'info');
+                
+                showMessage(`A processar lista de animes...`, 'info');
 
                 for (const magnetElement of magnetLinks) {
                     const row = magnetElement.closest('tr');
@@ -186,35 +231,39 @@
                     const rawTitle = titleElement.getAttribute('title') || titleElement.textContent.trim();
                     const cleaned = cleanTitle(rawTitle);
                     const torrentLink = magnetElement.href;
+                    const fileSize = row.querySelectorAll('td')[3]?.textContent.trim() || '';
 
                     if (!cleaned) continue;
 
                     if (!animeVersions.has(cleaned)) {
                         animeVersions.set(cleaned, []);
+                        const placeholderCard = createAnimeCardPlaceholder({ cleanedTitle: cleaned });
+                        resultsContainer.appendChild(placeholderCard);
                     }
-                    animeVersions.get(cleaned).push({ rawTitle, torrentLink });
-                }
-
-                for (const [cleanedTitle, versions] of animeVersions.entries()) {
-                    const apiData = await searchAnime(cleanedTitle);
-                    const card = createAnimeCard({ cleanedTitle, apiData });
-                    
-                    card.addEventListener('click', (e) => {
-                        e.preventDefault(); 
-                        const detailsData = {
-                            title: cleanedTitle,
-                            imageUrl: apiData?.images?.jpg?.large_image_url || '',
-                            versions: versions
-                        };
-                        localStorage.setItem('animeDetails', JSON.stringify(detailsData));
-                        window.location.href = './detalhes.html';
-                    });
-                    
-                    resultsContainer.appendChild(card);
-                    await delay(API_REQUEST_DELAY);
+                    animeVersions.get(cleaned).push({ rawTitle, torrentLink, fileSize });
                 }
                 
-                showMessage(`${animeVersions.size} animes únicos encontrados na página ${page}.`, 'success');
+                showMessage(`A buscar ${animeVersions.size} banners...`, 'success');
+
+                const animeTitles = Array.from(animeVersions.keys());
+                for (let i = 0; i < animeTitles.length; i += BATCH_SIZE) {
+                    const batch = animeTitles.slice(i, i + BATCH_SIZE);
+                    const promises = batch.map(title => searchAnime(title));
+                    const results = await Promise.all(promises);
+                    
+                    results.forEach((apiData, index) => {
+                        const cleanedTitle = batch[index];
+                        const card = document.querySelector(`[data-title="${cleanedTitle.toLowerCase()}"]`);
+                        if (card) {
+                            updateAnimeCard(card, {
+                                apiData,
+                                versions: animeVersions.get(cleanedTitle)
+                            });
+                        }
+                    });
+                    
+                    await delay(BATCH_DELAY);
+                }
 
             } catch (error) {
                 console.error('Erro principal:', error);
@@ -222,20 +271,31 @@
             }
         }
         
-        searchBar.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const allCards = document.querySelectorAll('.anime-card');
-            allCards.forEach(card => {
-                const title = card.getAttribute('data-title');
-                if (title.includes(searchTerm)) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
+        toggleModeBtn.addEventListener('click', () => {
+            appState.mode = (appState.mode === 'erai-raws') ? 'pt-br' : 'erai-raws';
+            appState.page = 1;
+            appState.query = '';
+            searchBar.value = '';
+            updateUI();
+            main();
+        });
+        
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const searchTerm = searchBar.value.trim();
+            if (searchTerm) {
+                appState.mode = 'search';
+                appState.query = searchTerm;
+                appState.page = 1;
+                updateUI();
+                main();
+            }
         });
 
-        window.addEventListener('DOMContentLoaded', () => main(1));
+        window.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            main();
+        });
     </script>
 </body>
 </html>
