@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta name="theme-color" content="#111827">
     <title>Detalhes do Anime</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Fontes do Google -->
-	<link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
@@ -20,36 +18,22 @@
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
     </style>
-	    <!-- NOVO: Script para registar o Service Worker -->
-    <script>
-      // Verifica se o navegador suporta Service Workers
-      if ('serviceWorker' in navigator) {
-        // Espera a página carregar completamente
-        window.addEventListener('load', () => {
-          // Regista o ficheiro sw.js
-          navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('ServiceWorker registado com sucesso: ', registration.scope);
-          }, err => {
-            console.log('Falha ao registar o ServiceWorker: ', err);
-          });
-        });
-      }
-    </script>
 </head>
 <body class="bg-gray-900 text-gray-100">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
-        <!-- Botão para voltar -->
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
         <a href="./index.html" class="inline-block bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mb-8 transition-colors">
             &larr; Voltar para a Lista
         </a>
 
-        <!-- Conteúdo dos detalhes do anime -->
-        <div id="details-content" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- O banner do anime será inserido aqui -->
-            <div id="anime-banner-container" class="md:col-span-1"></div>
-            <!-- A lista de downloads será inserida aqui -->
-            <div id="anime-versions-container" class="md:col-span-2"></div>
+        <!-- **ALTERAÇÃO**: O layout agora é uma grelha que se adapta a ecrãs maiores e à orientação horizontal. -->
+        <div id="details-content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div id="anime-banner-container" class="lg:col-span-1">
+                <!-- O banner do anime será inserido aqui -->
+            </div>
+            <div id="anime-versions-container" class="lg:col-span-2">
+                <!-- A lista de downloads será inserida aqui -->
+            </div>
         </div>
     </div>
 
@@ -58,7 +42,6 @@
             const bannerContainer = document.getElementById('anime-banner-container');
             const versionsContainer = document.getElementById('anime-versions-container');
             
-            // Recupera os dados guardados no localStorage
             const detailsDataJSON = localStorage.getItem('animeDetails');
 
             if (!detailsDataJSON) {
@@ -70,8 +53,9 @@
 
             // Adiciona o banner e o título
             const bannerHtml = `
-                <img src="${detailsData.imageUrl}" alt="${detailsData.title}" class="w-full rounded-lg shadow-lg aspect-[2/3] object-cover">
-                <h1 class="text-3xl font-bold text-white mt-4">${detailsData.title}</h1>
+                <img src="${detailsData.imageUrl}" alt="${detailsData.title}" class="w-full max-w-sm mx-auto lg:max-w-full rounded-lg shadow-lg aspect-[2/3] object-cover">
+                <!-- **ALTERAÇÃO**: Tamanho de fonte responsivo para o título -->
+                <h1 class="text-2xl sm:text-3xl font-bold text-white mt-4 text-center lg:text-left">${detailsData.title}</h1>
             `;
             bannerContainer.innerHTML = bannerHtml;
 
@@ -82,8 +66,8 @@
             detailsData.versions.forEach(version => {
                 versionsHtml += `
                     <a href="${version.torrentLink}" class="download-link bg-gray-800 p-4 rounded-lg flex items-center justify-between transition-colors duration-200">
-                        <span class="text-gray-300 flex-1 pr-4">${version.rawTitle}</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <span class="text-gray-300 flex-1 pr-4 text-sm sm:text-base">${version.rawTitle}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                     </a>
