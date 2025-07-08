@@ -1,9 +1,8 @@
 const CACHE_NAME = 'anime-catalogo-v1';
-// Lista de ficheiros a serem guardados em cache.
 const aGuardar = [
-  './',
-  './index.html',
-  './detalhes.html',
+  '/NyaNime/',
+  '/NyaNime/index.html',
+  '/NyaNime/detalhes.html',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap'
 ];
