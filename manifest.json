@@ -1,0 +1,21 @@
+{
+  "name": "Catálogo de Animes",
+  "short_name": "Animes",
+  "description": "Um catálogo para visualizar os últimos lançamentos de animes.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "https://www.gstatic.com/android/keyboard/emojikit/20181008/u1f3a8.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://www.gstatic.com/android/keyboard/emojikit/20181008/u1f3a8.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
