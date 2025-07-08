@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Anime</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fontes do Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
+        .download-link:hover { background-color: #374151; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <!-- Botão para voltar -->
+        <a href="./index.html" class="inline-block bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mb-8 transition-colors">
+            &larr; Voltar para a Lista
+        </a>
+
+        <!-- Conteúdo dos detalhes do anime -->
+        <div id="details-content" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- O banner do anime será inserido aqui -->
+            <div id="anime-banner-container" class="md:col-span-1"></div>
+            <!-- A lista de downloads será inserida aqui -->
+            <div id="anime-versions-container" class="md:col-span-2"></div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const bannerContainer = document.getElementById('anime-banner-container');
+            const versionsContainer = document.getElementById('anime-versions-container');
+            
+            // Recupera os dados guardados no localStorage
+            const detailsDataJSON = localStorage.getItem('animeDetails');
+
+            if (!detailsDataJSON) {
+                bannerContainer.innerHTML = `<p class="text-red-400">Não foi possível carregar os detalhes do anime. Por favor, volte à página principal e tente novamente.</p>`;
+                return;
+            }
+
+            const detailsData = JSON.parse(detailsDataJSON);
+
+            // Adiciona o banner e o título
+            const bannerHtml = `
+                <img src="${detailsData.imageUrl}" alt="${detailsData.title}" class="w-full rounded-lg shadow-lg aspect-[2/3] object-cover">
+                <h1 class="text-3xl font-bold text-white mt-4">${detailsData.title}</h1>
+            `;
+            bannerContainer.innerHTML = bannerHtml;
+
+            // Cria a lista de versões para download
+            let versionsHtml = '<h2 class="text-2xl font-semibold text-gray-300 mb-4">Versões Disponíveis</h2>';
+            versionsHtml += '<div class="space-y-3">';
+
+            detailsData.versions.forEach(version => {
+                versionsHtml += `
+                    <a href="${version.torrentLink}" class="download-link bg-gray-800 p-4 rounded-lg flex items-center justify-between transition-colors duration-200">
+                        <span class="text-gray-300 flex-1 pr-4">${version.rawTitle}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </a>
+                `;
+            });
+
+            versionsHtml += '</div>';
+            versionsContainer.innerHTML = versionsHtml;
+        });
+    </script>
+</body>
+</html>

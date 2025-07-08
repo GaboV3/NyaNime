@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Animes</title>
+    <!-- Tailwind CSS para um design moderno e responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fontes do Google para uma melhor tipografia -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
+        .anime-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .anime-card:hover { transform: translateY(-5px) scale(1.03); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 20px rgba(96, 165, 250, 0.3); }
+        @keyframes pulse { 50% { opacity: .5; } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">Últimos lançamentos</h1>
+        </header>
+
+        <!-- Barra de Pesquisa -->
+        <div class="mb-8 max-w-lg mx-auto">
+            <input type="text" id="search-bar" placeholder="Pesquisar animes nesta página..." class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+        </div>
+
+        <div id="message-container" class="text-center my-4"></div>
+        <div id="results" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+            <!-- Os cartões de anime serão inseridos aqui -->
+        </div>
+        
+        <!-- Container para os controlos de paginação -->
+        <div id="pagination-container" class="flex justify-center items-center space-x-4 mt-8"></div>
+    </div>
+
+    <script>
+        const resultsContainer = document.getElementById('results');
+        const messageContainer = document.getElementById('message-container');
+        const paginationContainer = document.getElementById('pagination-container');
+        const searchBar = document.getElementById('search-bar');
+        const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+        const API_REQUEST_DELAY = 1000;
+
+        function showMessage(text, type = 'info') {
+            const colors = { info: 'text-blue-400', error: 'text-red-400', success: 'text-green-400' };
+            messageContainer.innerHTML = `<p class="text-lg ${colors[type]}">${text}</p>`;
+        }
+
+        function cleanTitle(rawTitle) {
+            let title = rawTitle;
+            title = title.replace(/\s*\[.*?\]\s*|\s*\(.*?\)\s*/gu, ' ');
+            title = title.replace(/\s-\s\d{1,4}(\s|v\d)?\b/giu, ' ');
+            title = title.replace(/\b\d{1,4}\b/giu, ' ');
+            title = title.replace(/\bS\d{1,2}E\d{1,2}\b/giu, ' ');
+            title = title.replace(/\.\w{3,4}$/u, '');
+            const qualityKeywords = ['1080p', '720p', '540p', '480p', 'HEVC', 'x265', 'x264', 'WEBRip', 'BluRay', 'HDTV', 'Batch', 'MultiSub', 'NF', 'CR', 'AMZN'];
+            const qualityRegex = new RegExp(`\\b(${qualityKeywords.join('|')})\\b`, 'giu');
+            title = title.replace(qualityRegex, '');
+            title = title.replace(/\b(Season|S)\s*\d{1,2}\b/giu, '');
+            title = title.replace(/\s{2,}/gu, ' ').trim();
+            return title;
+        }
+
+        async function searchAnime(title) {
+            if (!title) return null;
+            const apiUrl = `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=1`;
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error(`Erro na API Jikan: ${response.status} - ${response.statusText}`);
+                const data = await response.json();
+                return data.data && data.data.length > 0 ? data.data[0] : null;
+            } catch (error) {
+                console.error(`Falha ao buscar '${title}' na Jikan:`, error.message);
+                return null;
+            }
+        }
+
+        function createAnimeCard({ cleanedTitle, apiData }) {
+            const card = document.createElement('a');
+            card.href = './detalhes.html'; 
+            card.title = `Ver detalhes de "${cleanedTitle}"`;
+            // **ALTERAÇÃO**: Layout modificado para coluna flexível para acomodar o título
+            card.className = 'anime-card bg-gray-800 rounded-lg overflow-hidden shadow-lg flex flex-col cursor-pointer';
+            card.setAttribute('data-title', cleanedTitle.toLowerCase());
+            
+            // **NOVO**: Elemento de título
+            const titleElement = document.createElement('h3');
+            titleElement.className = 'p-2 text-center text-sm font-semibold text-white truncate';
+            titleElement.textContent = cleanedTitle;
+
+            // **NOVO**: Container para a imagem para manter a proporção
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'aspect-[2/3] w-full bg-gray-700'; // Cor de fundo para o placeholder
+
+            const imageUrl = apiData?.images?.jpg?.large_image_url;
+            if (imageUrl) {
+                // **ALTERAÇÃO**: Adicionado onerror para uma nova tentativa de carregar a imagem
+                imageContainer.innerHTML = `<img src="${imageUrl}" alt="${apiData.title}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src=this.src;">`;
+            } else {
+                imageContainer.innerHTML = `
+                    <div class="w-full h-full flex items-center justify-center p-2 text-center">
+                        <p class="text-xs text-gray-400">Banner não encontrado</p>
+                    </div>`;
+            }
+            
+            // Adiciona o título acima do banner
+            card.appendChild(titleElement);
+            card.appendChild(imageContainer);
+            
+            return card;
+        }
+        
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        function renderPagination(currentPage, hasNextPage) {
+            paginationContainer.innerHTML = ''; 
+
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Anterior';
+            prevButton.className = 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+            if (currentPage <= 1) {
+                prevButton.disabled = true;
+            }
+            prevButton.addEventListener('click', () => main(currentPage - 1));
+
+            const pageDisplay = document.createElement('span');
+            pageDisplay.textContent = `Página ${currentPage}`;
+            pageDisplay.className = 'text-lg font-semibold text-white';
+
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Próxima';
+            nextButton.className = 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+            if (!hasNextPage) {
+                nextButton.disabled = true;
+            }
+            nextButton.addEventListener('click', () => main(currentPage + 1));
+
+            paginationContainer.appendChild(prevButton);
+            paginationContainer.appendChild(pageDisplay);
+            paginationContainer.appendChild(nextButton);
+        }
+
+        async function main(page = 1) {
+            const titleSelector = 'a[href*="/view/"]:not(.comments)';
+            const magnetSelector = 'a[href^="magnet:?"]';
+            
+            const animeVersions = new Map();
+
+            resultsContainer.innerHTML = '';
+            paginationContainer.innerHTML = '';
+            searchBar.value = ''; // Limpa a pesquisa ao mudar de página
+            showMessage(`A carregar página ${page}...`, 'info');
+
+            try {
+                const targetUrl = `https://nyaa.si/user/Erai-raws?p=${page}`;
+                const proxiedUrl = `${CORS_PROXY}${encodeURIComponent(targetUrl)}`;
+                const response = await fetch(proxiedUrl);
+                if (!response.ok) throw new Error(`Não foi possível aceder ao URL através do proxy. Status: ${response.status}.`);
+                
+                const htmlText = await response.text();
+                if (!htmlText || !htmlText.toLowerCase().includes("</html>")) throw new Error("O proxy não retornou conteúdo HTML válido.");
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                const magnetLinks = doc.querySelectorAll(magnetSelector);
+
+                if (magnetLinks.length === 0) {
+                    showMessage(`Nenhum item encontrado na página ${page}. Pode ser a última página.`, 'error');
+                    renderPagination(page, false); 
+                    return;
+                }
+                renderPagination(page, true);
+
+                showMessage(`Encontrados ${magnetLinks.length} itens. A agrupar e buscar informações...`, 'info');
+
+                for (const magnetElement of magnetLinks) {
+                    const row = magnetElement.closest('tr');
+                    if (!row) continue;
+                    const titleElement = row.querySelector(titleSelector);
+                    if (!titleElement) continue;
+                    
+                    const rawTitle = titleElement.getAttribute('title') || titleElement.textContent.trim();
+                    const cleaned = cleanTitle(rawTitle);
+                    const torrentLink = magnetElement.href;
+
+                    if (!cleaned) continue;
+
+                    if (!animeVersions.has(cleaned)) {
+                        animeVersions.set(cleaned, []);
+                    }
+                    animeVersions.get(cleaned).push({ rawTitle, torrentLink });
+                }
+
+                for (const [cleanedTitle, versions] of animeVersions.entries()) {
+                    const apiData = await searchAnime(cleanedTitle);
+                    const card = createAnimeCard({ cleanedTitle, apiData });
+                    
+                    card.addEventListener('click', (e) => {
+                        e.preventDefault(); 
+                        const detailsData = {
+                            title: cleanedTitle,
+                            imageUrl: apiData?.images?.jpg?.large_image_url || '',
+                            versions: versions
+                        };
+                        localStorage.setItem('animeDetails', JSON.stringify(detailsData));
+                        window.location.href = './detalhes.html';
+                    });
+                    
+                    resultsContainer.appendChild(card);
+                    await delay(API_REQUEST_DELAY);
+                }
+                
+                showMessage(`${animeVersions.size} animes únicos encontrados na página ${page}.`, 'success');
+
+            } catch (error) {
+                console.error('Erro principal:', error);
+                showMessage(error.message, 'error');
+            }
+        }
+        
+        searchBar.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const allCards = document.querySelectorAll('.anime-card');
+            allCards.forEach(card => {
+                const title = card.getAttribute('data-title');
+                if (title.includes(searchTerm)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        });
+
+        window.addEventListener('DOMContentLoaded', () => main(1));
+    </script>
+</body>
+</html>
